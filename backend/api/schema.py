@@ -50,7 +50,7 @@ class UserCreate(schemas.BaseUserCreate):
 
 class ConversationSchema(BaseModel):
     id: int = -1
-    conversation_id: uuid.UUID = None
+    conversation_id: str = None
     title: str = None
     user_id: int = None
     is_valid: bool = None

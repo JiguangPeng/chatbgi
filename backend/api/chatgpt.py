@@ -1,69 +1,95 @@
 import json
-
-from revChatGPT.V1 import Chatbot, BASE_URL
+import time
+from azureChatGPT import Chatbot as cb
 import asyncio
-from revChatGPT.V1 import Error as ChatGPTError
 from api.config import config
-
-def chatbot_check_response(response):
-    response.encoding = "utf-8"
-    if response.status_code != 200:
-        print(response.text)
-        error = ChatGPTError()
-        error.source = "OpenAI"
-        error.code = response.status_code
-        error.message = response.text
-        raise error
-
+import uuid
+from collections import defaultdict
+from datetime import datetime,timedelta
 
 class ChatGPTManager:
     def __init__(self):
-        self.chatbot = Chatbot({
-            "access_token": config.get("chatgpt_access_token"),
-            "paid": config.get("chatgpt_paid"),
-        })
-        self.semaphore = asyncio.Semaphore(1)
+        self.api_dict = {}
+        self.semaphore_dict = defaultdict(lambda: asyncio.Semaphore(1))
 
-    def is_busy(self):
-        return self.semaphore.locked()
+    def load_api(self, conversation_id: str, conversation_history: str):
+        if conversation_id == None:
+            conversation_id = str(uuid.uuid4())
+        self.api_dict[conversation_id] = cb()
+        self.api_dict[conversation_id].load(config.get("azure_yaml"))
+        self.load_record(conversation_id, conversation_history)
+        self.api_dict[conversation_id].active_time = datetime.utcnow()
+        return conversation_id
 
-    def get_conversations(self):
-        conversations = self.chatbot.get_conversations()
-        return conversations
+    def clean_api(self):
+        del_api_set = [i for i in self.api_dict.keys() if datetime.utcnow() - self.api_dict[i].active_time > timedelta(seconds=20)]
+        for i in del_api_set:
+            self.delete_conversation(i)
+
+    def is_busy(self, conversation_id: str):
+        return self.semaphore_dict[conversation_id].locked()
+
+    def load_record(self, conversation_id: str, record: str):
+        if not record:
+            return
+        record_dict = json.loads(record)
+        conversation_list = []
+        conversation_item = {"role": "", "content": ""}
+        itemdict = record_dict["mapping"][record_dict["current_node"]]
+        conversation_list.append(
+            {
+                "role": itemdict["message"]["author"]["role"],
+                "content": itemdict["message"]["content"]["parts"][0],
+            }
+        )
+        point = itemdict["parent"]
+        for i in range(len(record_dict["mapping"]) - 1):
+            itemdict = record_dict["mapping"][point]
+            conversation_list.append(
+                {
+                    "role": itemdict["message"]["author"]["role"],
+                    "content": itemdict["message"]["content"]["parts"][0],
+                }
+            )
+            point = itemdict["parent"]
+        self.api_dict[conversation_id].conversation["default"] = (
+            self.api_dict[conversation_id].conversation["default"][:1]
+            + conversation_list[::-1]
+        )
 
     def get_conversation_messages(self, conversation_id: str):
-        # TODO: 使用 redis 缓存
-        messages = self.chatbot.get_msg_history(conversation_id)
-        return messages
+        record_dict = {"mapping": {}, "current_node": ""}
+        item = '{"message": {"author": {"role": ""}, "content": {"parts": [""]}}, "children": [], "parent":""}'
+        records = self.api_dict[conversation_id].conversation["default"][1:]
+        for idx, record in enumerate(records):
+            itemdict = json.loads(item)
+            itemdict["message"]["author"]["role"] = record["role"]
+            itemdict["message"]["content"]["parts"][0] = record["content"]
+            if idx > 0:
+                itemdict["parent"] = str(idx - 1)
+            if idx < len(records) - 1:
+                itemdict["children"].append(str(idx + 1))
+            if idx == len(records) - 1:
+                record_dict["current_node"] = str(idx)
+            record_dict["mapping"][str(idx)] = itemdict
+        return record_dict
 
-    def clear_conversations(self):
-        self.chatbot.clear_conversations()
-
-    def get_ask_generator(self, message, use_paid=False, conversation_id: str = None, parrent_id: str = None,
-                          timeout=360):
-        self.chatbot.config["paid"] = use_paid
-        return self.chatbot.ask(message, conversation_id, parrent_id, timeout)
+    def get_ask_generator(
+        self,
+        message,
+        use_paid=False,
+        conversation_id: str = None,
+        parrent_id: str = None,
+        conversation_history: str = "",
+        timeout=360,
+    ):
+        if conversation_id == None or self.api_dict.get(conversation_id, True):
+            conversation_id = self.load_api(conversation_id, conversation_history)
+        return (
+            self.api_dict[conversation_id].ask_stream(prompt=message, role="user"),
+            conversation_id,
+            str(time.time()),
+        )
 
     def delete_conversation(self, conversation_id: str):
-        self.chatbot.delete_conversation(conversation_id)
-
-    def set_conversation_title(self, conversation_id: str, title: str):
-        """Hack change_title to set title in utf-8"""
-        # self.chatbot.change_title(conversation_id, title)
-        url = BASE_URL + f"api/conversation/{conversation_id}"
-        data = json.dumps({"title": title}, ensure_ascii=False).encode("utf-8")
-        response = self.chatbot.session.patch(url, data=data)
-        chatbot_check_response(response)
-
-    def generate_conversation_title(self, conversation_id: str, message_id: str):
-        """Hack gen_title to get title"""
-        # self.chatbot.gen_title(conversation_id, message_id)
-        url = BASE_URL + f"api/conversation/gen_title/{conversation_id}"
-        response = self.chatbot.session.post(
-            url,
-            data=json.dumps(
-                {"message_id": message_id, "model": "text-davinci-002-render"},
-            ),
-        )
-        chatbot_check_response(response)
-        return response.json()
+        del self.api_dict[conversation_id]

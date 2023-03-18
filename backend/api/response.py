@@ -13,9 +13,8 @@ from starlette.responses import JSONResponse
 from pydantic.generics import GenericModel
 
 from api.exceptions import SelfDefinedException
-from revChatGPT.V1 import Error as ChatGPTError
 
-T = TypeVar('T')
+T = TypeVar("T")
 
 
 class ResponseWrapper(GenericModel, Generic[T]):
@@ -44,18 +43,22 @@ class CustomJSONResponse(Response):
     media_type = "application/json"
 
     def __init__(
-            self,
-            content: Any,
-            status_code: int = 200,
-            headers: Optional[Dict[str, str]] = None,
-            media_type: Optional[str] = None,
-            background: Optional[BackgroundTask] = None,
+        self,
+        content: Any,
+        status_code: int = 200,
+        headers: Optional[Dict[str, str]] = None,
+        media_type: Optional[str] = None,
+        background: Optional[BackgroundTask] = None,
     ) -> None:
         super().__init__(content, status_code, headers, media_type, background)
 
     def render(self, content: typing.Any) -> bytes:
         if not isinstance(content, ResponseWrapper):
-            content = ResponseWrapper(code=self.status_code, message=get_http_message(self.status_code), result=content)
+            content = ResponseWrapper(
+                code=self.status_code,
+                message=get_http_message(self.status_code),
+                result=content,
+            )
         return content.to_json().encode("utf-8")
 
 
@@ -72,10 +75,12 @@ class PrettyJSONResponse(Response):
         ).encode("utf-8")
 
 
-def response(code: int = 200, message: str = "", result: Optional[Any] = None) -> CustomJSONResponse:
+def response(
+    code: int = 200, message: str = "", result: Optional[Any] = None
+) -> CustomJSONResponse:
     return CustomJSONResponse(
         content=ResponseWrapper(code=code, message=message, result=result),
-        status_code=200
+        status_code=200,
     )
 
 
@@ -99,12 +104,10 @@ def handle_exception_response(e: Exception) -> CustomJSONResponse:
         return response(-1, e.reason, e.message)
     elif isinstance(e, StarletteHTTPException):
         if e.detail == ErrorCode.REGISTER_USER_ALREADY_EXISTS:
-            message="errors.userAlreadyExists"
+            message = "errors.userAlreadyExists"
         elif e.detail == ErrorCode.LOGIN_BAD_CREDENTIALS:
-            message="errors.badCredentials"
+            message = "errors.badCredentials"
         else:
             message = get_http_message(e.status_code)
         return response(e.status_code or -1, message or f"{e.status_code} {e.detail}")
-    elif isinstance(e, ChatGPTError):
-        return response(502, "errors.chatgptResponseError", f"{e.source} {e.code}: {e.message}")
     return response(-1, str(e))

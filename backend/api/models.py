@@ -1,7 +1,7 @@
 from typing import List, Optional
 
 from fastapi_users_db_sqlalchemy import Integer, GUID, UUID_ID
-from sqlalchemy import String, DateTime, Enum, Boolean, Float, ForeignKey
+from sqlalchemy import String, DateTime, Enum, Boolean, Float, ForeignKey,Text
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.orm import Mapped, mapped_column
@@ -41,10 +41,6 @@ class User(Base):
 
 
 class Conversation(Base):
-    """
-    ChatGPT 非官方 API 所使用的对话
-    只记录对话和用户之间的对应关系，不存储内容
-    """
 
     __tablename__ = "conversation"
 
@@ -57,3 +53,4 @@ class Conversation(Base):
     use_paid: Mapped[Optional[bool]] = mapped_column(Boolean, comment="是否使用paid模型(以最后一次消息为准)")
     create_time: Mapped[Optional[DateTime]] = mapped_column(DateTime, default=None, comment="创建时间")
     active_time: Mapped[Optional[DateTime]] = mapped_column(DateTime, default=None, comment="最后活跃时间")
+    record: Mapped[Optional[Text]] = mapped_column(Text, default=None, comment="对话记录")
