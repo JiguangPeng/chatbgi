@@ -6,14 +6,20 @@ from api.config import config
 import uuid
 from collections import defaultdict
 from datetime import datetime,timedelta
+from api.import_data import server_init as qdrant_server_init
+from text2vec import SentenceModel, EncoderType
 
 class ChatGPTManager:
     def __init__(self):
         self.api_dict = {}
         self.semaphore_dict = defaultdict(lambda: asyncio.Semaphore(1))
+        self.database_system_prompt = config.get('database_system_prompt')
+        self.default_system_prompt = config.get('default_system_prompt')
+        self.model = SentenceModel("shibing624/text2vec-base-chinese",encoder_type=EncoderType.FIRST_LAST_AVG)
+        self.client = qdrant_server_init("data_collection")
 
     def load_api(self, conversation_id: str, conversation_history: str):
-        if conversation_id == None:
+        if conversation_id is None:
             conversation_id = str(uuid.uuid4())
         self.api_dict[conversation_id] = cb()
         self.api_dict[conversation_id].load(config.get("azure_yaml"))
@@ -22,7 +28,7 @@ class ChatGPTManager:
         return conversation_id
 
     def clean_api(self):
-        del_api_set = [i for i in self.api_dict.keys() if datetime.utcnow() - self.api_dict[i].active_time > timedelta(seconds=20)]
+        del_api_set = [i for i in self.api_dict.keys() if datetime.utcnow() - self.api_dict[i].active_time > timedelta(seconds=600)]
         for i in del_api_set:
             self.delete_conversation(i)
 
@@ -33,17 +39,16 @@ class ChatGPTManager:
         if not record:
             return
         record_dict = json.loads(record)
-        conversation_list = []
         conversation_item = {"role": "", "content": ""}
         itemdict = record_dict["mapping"][record_dict["current_node"]]
-        conversation_list.append(
+        conversation_list = [
             {
                 "role": itemdict["message"]["author"]["role"],
                 "content": itemdict["message"]["content"]["parts"][0],
             }
-        )
+        ]
         point = itemdict["parent"]
-        for i in range(len(record_dict["mapping"]) - 1):
+        for _ in range(len(record_dict["mapping"]) - 1):
             itemdict = record_dict["mapping"][point]
             conversation_list.append(
                 {
@@ -83,13 +88,26 @@ class ChatGPTManager:
         conversation_history: str = "",
         timeout=360,
     ):
-        if conversation_id == None or self.api_dict.get(conversation_id, True):
+        if conversation_id is None or self.api_dict.get(conversation_id, True):
             conversation_id = self.load_api(conversation_id, conversation_history)
+        if use_paid or "BGI" in message or 'bgi' in message or "华大" in message:
+            knowledge=self.get_knowledege(message)
+            self.api_dict[conversation_id].conversation["default"][0]["content"] = f"{self.database_system_prompt}\nSource:{knowledge}\n"
+            use_paid = True
+        else:
+            self.api_dict[conversation_id].conversation["default"][0]["content"] = f"{self.default_system_prompt}"
+        print(self.api_dict[conversation_id].conversation["default"][0]["content"])
         return (
+            use_paid,
             self.api_dict[conversation_id].ask_stream(prompt=message, role="user"),
             conversation_id,
             str(time.time()),
         )
+    def get_knowledege(self, message):
+        query_vector = self.model.encode(message)
+        knowledge = self.client.search(query_vector,3)
+        answers = [f"{result.payload['file_path']}:{result.payload['text'][:300]}" for result in knowledge]
+        return "\n".join([f"- {i[:300]}" for i in answers]) + "\n"
 
     def delete_conversation(self, conversation_id: str):
         del self.api_dict[conversation_id]

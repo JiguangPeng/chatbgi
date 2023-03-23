@@ -24,11 +24,11 @@
       <div class="overflow-x-hidden" :style="{ height: inputHeight }">
         <n-scrollbar ref="historyRef" v-if="newConversation || currentMessageListDisplay.length != 0" class="flex flex-col h-full">
           <!-- 消息记录 -->
-          <div class="flex justify-center py-4 px-4 max-w-full" :style="{ backgroundColor: themeVars.baseColor }">
+<!--          <div class="flex justify-center py-4 px-4 max-w-full" :style="{ backgroundColor: themeVars.baseColor }">
             <n-text>{{ $t("commons.currentConversationModel") }}: {{ currentConversation?.use_paid ? $t("commons.paidModel") : $t("commons.shaModel")
             }}</n-text>
           </div>
-          <MessageRow :message="message" v-for="message in currentMessageListDisplay" :key="message.id" />
+-->          <MessageRow :message="message" v-for="message in currentMessageListDisplay" :key="message.id" />
         </n-scrollbar>
         <!-- 未选中对话 -->
         <div v-else-if="!currentConversationId" class="flex flex-col justify-center h-full" :style="{ backgroundColor: themeVars.cardColor }">

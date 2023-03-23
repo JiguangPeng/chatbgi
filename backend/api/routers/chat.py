@@ -184,6 +184,7 @@ async def ask(websocket: WebSocket):
 
     # 读取用户输入
     params = await websocket.receive_json()
+    print(params)
     message = params.get("message", None)
     conversation_id = params.get("conversation_id", None)
     parent_id = params.get("parent_id", None)
@@ -197,13 +198,14 @@ async def ask(websocket: WebSocket):
     if parent_id is not None and conversation_id is None:
         await websocket.close(1007, "errors.missingConversationId")
         return
-    if use_paid:
-        if not user.can_use_paid:
-            await websocket.close(1007, "errors.userNotAllowToUsePaidModel")
-            return
-        if not config.get("chatgpt_paid", False):
-            await websocket.close(1007, "errors.paidModelNotAvailable")
-            return
+
+    # if use_paid:
+    #     if not user.can_use_paid:
+    #         await websocket.close(1007, "errors.userNotAllowToUsePaidModel")
+    #         return
+    #     if not config.get("chatgpt_paid", False):
+    #         await websocket.close(1007, "errors.paidModelNotAvailable")
+    #         return
 
     new_conv = conversation_id is None
     conversation_history = ""
@@ -243,6 +245,7 @@ async def ask(websocket: WebSocket):
             await websocket.send_json({"type": "waiting", "tip": "tips.waiting"})
             request_start_time = time.time()
             (
+                new_use_paid,
                 ask_gen,
                 new_conversation_id,
                 new_parent_id,
@@ -254,6 +257,7 @@ async def ask(websocket: WebSocket):
                 conversation_history,
                 timeout,
             )
+            print(new_use_paid)
             message = ""
             async for data in async_wrap_iter(ask_gen):
                 message += data
@@ -262,7 +266,7 @@ async def ask(websocket: WebSocket):
                     "message": message,
                     "conversation_id": conversation_id,
                     "parent_id": new_parent_id,
-                    "use_paid": use_paid,
+                    "use_paid": new_use_paid,
                 }
                 await websocket.send_json(reply)
                 if conversation_id is None:
@@ -281,7 +285,7 @@ async def ask(websocket: WebSocket):
                         conversation_id=conversation_id,
                         title=new_title,
                         user_id=user.id,
-                        use_paid=use_paid,
+                        use_paid=new_use_paid,
                         create_time=current_time,
                         active_time=current_time,
                         record=json.dumps(
@@ -295,8 +299,8 @@ async def ask(websocket: WebSocket):
                         Conversation, conversation.id
                     )  # 此前的 conversation 属于另一个session
                     conversation.active_time = datetime.utcnow()
-                    if conversation.use_paid != use_paid:
-                        conversation.use_paid = use_paid
+                    if conversation.use_paid != new_use_paid:
+                        conversation.use_paid = new_use_paid
                     conversation.record = json.dumps(
                         g.chatgpt_manager.get_conversation_messages(conversation_id)
                     )
