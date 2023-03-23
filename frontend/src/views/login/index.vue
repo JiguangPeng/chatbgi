@@ -12,6 +12,8 @@
           autoComplete: 'current-password'
         }" @keyup.enter="login" />
       </n-form-item>
+	  <font class="text-gray-500 inline-block" size=2>仅限华大内部使用</font><br>
+	  <font class="text-gray-500 inline-block" size=2>开通账号请联系彭继光(pengjiguang@bgi.com)</font>
       <n-form-item wrapper-col="{ span: 16, offset: 8 }">
         <n-button type="primary" @click="login" :enabled="loading">{{ $t("commons.login") }}</n-button>
       </n-form-item>
