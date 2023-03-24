@@ -261,18 +261,14 @@ const sendDisabled = computed(() => {
 
 const makeNewConversation = () => {
   if (newConversation.value) return;
-  popupNewConversationDialog(
-    async (title: string, model: string) => {
       newConversation.value = {
         conversation_id: "new_conversation",
         // 默认标题格式：MMDD - username
-        title: title || `New Chat ${new Date().toLocaleString()} - ${userStore.user?.username}`,
-        use_paid: model === "paid" ? true : false,
+        title: `New Chat ${new Date().toLocaleString()} - ${userStore.user?.username}`,
+        use_paid: false,
         create_time: new Date().toISOString(),  // 仅用于当前排序到顶部
       };
       currentConversationId.value = "new_conversation";
-    },
-  )
 }
 
 const shortcutSendMsg = (e: KeyboardEvent) => {
@@ -357,7 +353,7 @@ const sendMsg = async () => {
   webSocket.onclose = async (event: CloseEvent) => {
     currentActiveMessageRecv.value!.typing = false;
     console.log('WebSocket connection is closed', event);
-    if (event.code === 1000) {  // 正常关闭        
+    if (event.code === 1000) {  // 正常关闭
       // 对于新对话，重新请求对话列表
       if (newConversation.value) {
         await conversationStore.fetchAllConversations();
