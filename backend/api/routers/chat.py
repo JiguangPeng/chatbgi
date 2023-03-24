@@ -258,12 +258,12 @@ async def ask(websocket: WebSocket):
                 timeout,
             )
             print(new_use_paid)
-            message = ""
+            response_message = ""
             async for data in async_wrap_iter(ask_gen):
-                message += data
+                response_message += data
                 reply = {
                     "type": "message",
-                    "message": message,
+                    "message": response_message,
                     "conversation_id": conversation_id,
                     "parent_id": new_parent_id,
                     "use_paid": new_use_paid,
@@ -283,7 +283,7 @@ async def ask(websocket: WebSocket):
                     current_time = datetime.utcnow()
                     conversation = Conversation(
                         conversation_id=conversation_id,
-                        title=new_title,
+                        title=message[:15],
                         user_id=user.id,
                         use_paid=new_use_paid,
                         create_time=current_time,
