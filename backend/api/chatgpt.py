@@ -105,9 +105,9 @@ class ChatGPTManager:
         )
     def get_knowledege(self, message):
         query_vector = self.model.encode(message)
-        knowledge = self.client.search(query_vector,3)
+        knowledge = self.client.search(query_vector,5)
         answers = [f"{result.payload['file_path']}:{result.payload['text'][:300]}" for result in knowledge]
-        return "\n".join([f"- {i[:300]}" for i in answers]) + "\n"
+        return "\n".join([f"- {i[:400]}" for i in answers]) + "\n"
 
     def delete_conversation(self, conversation_id: str):
         del self.api_dict[conversation_id]
