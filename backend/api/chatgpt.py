@@ -6,7 +6,7 @@ from api.config import config
 import uuid
 from collections import defaultdict
 from datetime import datetime,timedelta
-from api.import_data import server_init as qdrant_server_init
+from api.qd_client import keyword_search,server_init as qdrant_server_init
 from text2vec import SentenceModel, EncoderType
 
 class ChatGPTManager:
@@ -16,7 +16,7 @@ class ChatGPTManager:
         self.database_system_prompt = config.get('database_system_prompt')
         self.default_system_prompt = config.get('default_system_prompt')
         self.model = SentenceModel("shibing624/text2vec-base-chinese",encoder_type=EncoderType.FIRST_LAST_AVG)
-        self.client = qdrant_server_init("data_collection")
+        self.client,self.exact_dict = qdrant_server_init(config.get('database_keyword'))
 
     def load_api(self, conversation_id: str, conversation_history: str):
         if conversation_id is None:
@@ -104,9 +104,10 @@ class ChatGPTManager:
             str(time.time()),
         )
     def get_knowledege(self, message):
+        keyword = keyword_search(message,self.exact_dict)
         query_vector = self.model.encode(message)
-        knowledge = self.client.search(query_vector,5)
-        answers = [f"{result.payload['file_path']}:{result.payload['text'][:300]}" for result in knowledge]
+        knowledge = self.client.combine_search(query_vector, keyword, top_k=[3,3])
+        answers = [f"{result.payload['file_name']}:{result.payload['text'][:300]}" for result in knowledge]
         return "\n".join([f"- {i[:400]}" for i in answers]) + "\n"
 
     def delete_conversation(self, conversation_id: str):
