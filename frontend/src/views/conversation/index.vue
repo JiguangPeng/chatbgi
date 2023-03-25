@@ -67,7 +67,7 @@
         </div>
         <!-- 输入框 -->
         <n-input v-model:value="inputValue" class="flex-1" type="textarea" :bordered="false" :placeholder="$t('tips.sendMessage')"
-          @keydown.shift.enter="shortcutSendMsg" />
+        @keydown.enter="shortcutSendMsg"/>
         <div class="m-2 flex flex-row justify-end">
           <n-button :disabled="sendDisabled" @click="sendMsg" class="" type="primary" size="small">
             发送
@@ -272,8 +272,12 @@ const makeNewConversation = () => {
 }
 
 const shortcutSendMsg = (e: KeyboardEvent) => {
-  e.preventDefault();
+  if (e.ctrlKey || e.altKey) {
+    inputValue.value = inputValue.value + '\n';
+  } else {
+    e.preventDefault();
   sendMsg();
+  }
 }
 
 

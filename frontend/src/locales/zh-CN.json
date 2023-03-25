@@ -105,7 +105,7 @@
     "changeConversationTitleSuccess": "更改标题成功",
     "changeConversationTitleFailed": "更改标题失败",
     "rename": "请输入新标题",
-    "sendMessage": "请输入内容，使用 Shift+Enter 发送",
+    "sendMessage": "请输入内容，使用 Enter 发送，Ctrl+Enter 换行",
     "logoutConfirm": "确定要退出登录吗？",
     "pleaseEnterNickname": "请输入昵称",
     "pleaseEnterEmail": "请输入邮箱",
