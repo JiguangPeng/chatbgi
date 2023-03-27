@@ -5,7 +5,7 @@
         <div>
           <a href="#" style="text-decoration: none; color: inherit">{{ $t("commons.siteTitle") }}</a>
         </div>
-		<font class="text-gray-500 inline-block" size="2">华大专属ChatPGT</font>
+		<font class="text-gray-500 inline-block" size="2">华大专属ChatGPT</font>
       </n-space>
     </template>
     <template #avatar>
