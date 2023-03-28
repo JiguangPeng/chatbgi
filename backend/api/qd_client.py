@@ -4,16 +4,20 @@ import jieba.analyse
 from collections import defaultdict
 from qdrant_client import QdrantClient
 from qdrant_client.http.models import Distance, VectorParams
-from qdrant_client.http.models import PointStruct, PointIdsList, Filter, FieldCondition, MatchValue,MatchAny
+from qdrant_client.http.models import PointStruct, PointIdsList, Filter, FieldCondition, MatchValue,MatchAny,MatchText
 
 def keyword_search(user_input,exact_dict):
     # jieba.analyse.set_idf_path("/home/aigi/project/ChatBGI/document_ai/chatBGI/userdict.txt")
     keywords=jieba.analyse.extract_tags(user_input,topK=20, withWeight=False)
-    print(keywords)
+    print(f'user_input keyword:{keywords}')
     key_in_exact=[]
+    member_lst=[]
     for keyword in keywords:
+        if 'member' in exact_dict[keyword]:
+            print(f"member_name {keyword}")
+            member_lst+=[keyword]
         key_in_exact+=exact_dict[keyword]
-    return key_in_exact
+    return key_in_exact,member_lst
 
 def load_exact_dict(datadir):
     exact_dict=defaultdict(list)
@@ -48,21 +52,33 @@ class qdrant_client():
             ],
         )
         
-    def combine_search(self, query_vector, keyword, top_k=[3,3]):
-        search_result1 = self.client.search(
-            collection_name=self.collection_name["exact"],
-            query_vector=query_vector,
-            limit=top_k[0],
-            # score_threshold = 0.9,
-            query_filter=Filter(must=[FieldCondition(key="tag",match=MatchAny(any=keyword),)]),
-            # search_params={"exact": False, "hnsw_ef": 128}
-        )
+    def combine_search(self, query_vector,keyword,member_lst,  top_k=[3,3]):
+        if member_lst:
+            search_result1 = self.client.search(
+                collection_name=self.collection_name["exact"],
+                query_vector=query_vector,
+                limit=top_k[0],
+                # score_threshold = 0.9,
+                query_filter=Filter(must=[FieldCondition(key="tag",match=MatchAny(any=keyword),),
+                                     FieldCondition(key="text",match=MatchText(text=member_lst[0]),)])
+                # search_params={"exact": False, "hnsw_ef": 128}
+            )
+        else:
+            search_result1 = self.client.search(
+                collection_name=self.collection_name["exact"],
+                query_vector=query_vector,
+                limit=top_k[0],
+                # score_threshold = 0.9,
+                query_filter=Filter(must=[FieldCondition(key="tag",match=MatchAny(any=keyword),)]),
+                # search_params={"exact": False, "hnsw_ef": 128}
+            )
         search_result2 = self.client.search(
             collection_name=self.collection_name["corpus"],
             query_vector=query_vector,
             limit=top_k[1],
             # search_params={"exact": False, "hnsw_ef": 128}
         )
+
         knowledge = search_result1+search_result2
         return knowledge
 
@@ -122,6 +138,8 @@ if __name__ == "__main__":
     if sys.argv[1]=="info":
         print(qd_client.info("exact"))
         print(qd_client.info("corpus"))
-    elif sys.argv[2]=="clear":
-        qd_client.recreate("exact")
-        qd_client.recreate("corpus")
+    elif sys.argv[1]=="clear":
+        qd_client.client.delete_collection(sys.argv[2])
+    elif sys.argv[1]=="create":
+        qd_client.recreate(sys.argv[2])
+        # qd_client.client.recreate_collection("exact_collection")

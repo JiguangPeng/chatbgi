@@ -92,7 +92,7 @@ class ChatGPTManager:
             conversation_id = self.load_api(conversation_id, conversation_history)
         if use_paid or "BGI" in message or 'bgi' in message or "华大" in message:
             knowledge=self.get_knowledege(message)
-            self.api_dict[conversation_id].conversation["default"][0]["content"] = f"{self.database_system_prompt}\nSource:{knowledge}\n"
+            self.api_dict[conversation_id].conversation["default"][0]["content"] = f"{self.database_system_prompt}\n来源:{knowledge}\n"
             use_paid = True
         else:
             self.api_dict[conversation_id].conversation["default"][0]["content"] = f"{self.default_system_prompt}"
@@ -104,11 +104,13 @@ class ChatGPTManager:
             str(time.time()),
         )
     def get_knowledege(self, message):
-        keyword = keyword_search(message,self.exact_dict)
+        keyword,member_lst = keyword_search(message,self.exact_dict)
         query_vector = self.model.encode(message)
-        knowledge = self.client.combine_search(query_vector, keyword, top_k=[3,3])
-        answers = [f"{result.payload['file_name']}:{result.payload['text'][:300]}" for result in knowledge]
-        return "\n".join([f"- {i[:400]}" for i in answers]) + "\n"
+        knowledge = self.client.combine_search(query_vector, keyword,member_lst, top_k=[2,3])
+        answers = [f"- {result.payload['text'][:400]}" for result in knowledge]
+        answers=list(set(answers))
+        answers.sort(key=answers.index)
+        return "\n".join(answers) + "\n"
 
     def delete_conversation(self, conversation_id: str):
         del self.api_dict[conversation_id]
