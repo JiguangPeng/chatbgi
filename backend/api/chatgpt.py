@@ -108,8 +108,8 @@ class ChatGPTManager:
         query_vector = self.model.encode(message)
         knowledge = self.client.combine_search(query_vector, keyword,member_lst, top_k=[2,3])
         answers = [f"- {result.payload['text'][:400]}" for result in knowledge]
-        answers=list(set(answers))
-        answers.sort(key=answers.index)
+        answer=list(set(answers))
+        answer.sort(key=answers.index)
         return "\n".join(answers) + "\n"
 
     def delete_conversation(self, conversation_id: str):
