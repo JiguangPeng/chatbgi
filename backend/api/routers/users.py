@@ -5,7 +5,7 @@ from api.exceptions import AuthorityDenyException, InvalidParamsException
 from api.models import User
 from api.response import response
 from api.schema import UserRead, UserUpdate, UserCreate, LimitSchema
-from api.users import auth_backend, fastapi_users, current_active_user, get_user_manager_context, current_super_user
+from api.users import auth_backend, fastapi_users, current_active_user, get_user_manager_context, current_super_user, current_active_user
 
 from fastapi import APIRouter, Depends
 
@@ -37,7 +37,7 @@ async def get_all_users(_user: User = Depends(current_super_user)):
 
 
 @router.patch("/user/{user_id}/reset-password", tags=["user"])
-async def reset_password(user_id: int = None, new_password: str = None, _user: User = Depends(current_super_user)):
+async def reset_password(user_id: int = None, new_password: str = None, _user: User = Depends(current_active_user)):
     if not new_password:
         raise InvalidParamsException("errors.newPasswordRequired")
     async with get_async_session_context() as session:
