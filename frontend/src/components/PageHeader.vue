@@ -51,7 +51,6 @@ import { popupResetUserPasswordDialog } from '@/utils/renders';
 import { resetUserPasswordApi } from '@/api/user';
 
 
-
 const { t } = useI18n();
 const userStore = useUserStore();
 const appStore = useAppStore();
@@ -89,6 +88,7 @@ const languageOptions = [
   }
 ]
 
+
 const options = ref<Array<DropdownOption>>([
   {
     label: t("commons.resetPassword"),
@@ -97,7 +97,7 @@ const options = ref<Array<DropdownOption>>([
       onClick: () => {
             popupResetUserPasswordDialog(
               async (password: string) => {
-                await resetUserPasswordApi(userStore.user.id, password);
+                await resetUserPasswordApi(userStore.user!.id, password);
               },
               () => { Message.info(t("tips.resetUserPasswordSuccess")) },
               () => { Message.error(t("tips.resetUserPasswordFailed")) }
@@ -134,16 +134,6 @@ const options = ref<Array<DropdownOption>>([
   }
 ])
 
-if (userStore.user?.is_superuser) {
-  options.value.unshift({
-    label: t("commons.adminPanel"),
-    show: userStore.user?.is_superuser,
-    key: 'admin',
-    props: {
-      onClick: () => router.push({ name: 'admin' })
-    }
-  })
-}
 
 
 </script>
