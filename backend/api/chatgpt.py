@@ -16,7 +16,7 @@ class ChatGPTManager:
         self.database_system_prompt = config.get('database_system_prompt')
         self.default_system_prompt = config.get('default_system_prompt')
         self.model = SentenceModel("shibing624/text2vec-base-chinese",encoder_type=EncoderType.FIRST_LAST_AVG)
-        self.client,self.exact_dict = qdrant_server_init(config.get('database_keyword'))
+        self.client,self.exact_dict,self.matchtext_set = qdrant_server_init(config.get('database_keyword'))
 
     def load_api(self, conversation_id: str, conversation_history: str):
         if conversation_id is None:
@@ -91,8 +91,10 @@ class ChatGPTManager:
         if conversation_id is None or self.api_dict.get(conversation_id, True):
             conversation_id = self.load_api(conversation_id, conversation_history)
         if use_paid or "BGI" in message or 'bgi' in message or "华大" in message:
-            knowledge=self.get_knowledege(message)
-            self.api_dict[conversation_id].conversation["default"][0]["content"] = f"{self.database_system_prompt}\n来源:{knowledge}\n"
+            str_knowledge1, str_knowledge2, update = self.get_knowledege(message)
+            if update and not getattr(self, "knowledge1", ""):
+                self.knowledge1 = str_knowledge1
+            self.api_dict[conversation_id].conversation["default"][0]["content"] = f"{self.database_system_prompt}\n来源:{str_knowledge2}\n{self.knowledge1}"
             use_paid = True
         else:
             self.api_dict[conversation_id].conversation["default"][0]["content"] = f"{self.default_system_prompt}"
@@ -104,13 +106,13 @@ class ChatGPTManager:
             str(time.time()),
         )
     def get_knowledege(self, message):
-        keyword,member_lst = keyword_search(message,self.exact_dict)
+        #FIX 增加不同模式匹配方案
+        # keyword,member_lst = keyword_search(message,self.exact_dict)
+        keywords,group_choose,match_text = keyword_search(message,self.exact_dict,self.matchtext_set)
         query_vector = self.model.encode(message)
-        knowledge = self.client.combine_search(query_vector, keyword,member_lst, top_k=[2,3])
-        answers = [f"- {result.payload['text'][:400]}" for result in knowledge]
-        answer=list(set(answers))
-        answer.sort(key=answers.index)
-        return "\n".join(answers) + "\n"
+        str_knowledge1,str_knowledge2,show_str_knowledges,update = self.client.combine_search(query_vector, keywords,group_choose,match_text, top_k=[2,3])
+        print(show_str_knowledges)
+        return str_knowledge1, str_knowledge2, update
 
     def delete_conversation(self, conversation_id: str):
         del self.api_dict[conversation_id]

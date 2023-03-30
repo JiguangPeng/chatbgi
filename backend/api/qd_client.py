@@ -6,27 +6,60 @@ from qdrant_client import QdrantClient
 from qdrant_client.http.models import Distance, VectorParams
 from qdrant_client.http.models import PointStruct, PointIdsList, Filter, FieldCondition, MatchValue,MatchAny,MatchText
 
-def keyword_search(user_input,exact_dict):
+def keyword_search(user_input,exact_dict,matchtext_set):
     # jieba.analyse.set_idf_path("/home/aigi/project/ChatBGI/document_ai/chatBGI/userdict.txt")
     keywords=jieba.analyse.extract_tags(user_input,topK=20, withWeight=False)
     print(f'user_input keyword:{keywords}')
-    key_in_exact=[]
-    member_lst=[]
+    group_choose=[]
+    match_text=[]
     for keyword in keywords:
-        if 'member' in exact_dict[keyword]:
-            print(f"member_name {keyword}")
-            member_lst+=[keyword]
-        key_in_exact+=exact_dict[keyword]
-    return key_in_exact,member_lst
+        if keyword in matchtext_set:
+            # info(f"match_text {keyword}")
+            match_text+=[keyword]
+        group_choose+=exact_dict[keyword]
+    return keywords,group_choose,match_text
 
 def load_exact_dict(datadir):
     exact_dict=defaultdict(list)
     for group in ["member","product","history","strategy"]:
         with open(f'{datadir}/{group}.txt', 'r') as f:
-            member_lst = f.read().splitlines()
-            for i in member_lst:
+            group_lst = f.read().splitlines()
+            for i in group_lst:
                 exact_dict[i]+=[group]
     return exact_dict
+
+def load_matchtext_set(file_path):
+    matchtext_set = set()
+    with open(file_path, 'r') as f:
+        for line in f:
+            columns = line.split()
+            matchtext_set.add(columns[0])
+    return matchtext_set
+
+def filter_knowledge(knowledge1,knowledge2):
+        answers1 = [f"- {result.payload['text']}" for result in knowledge1]
+        answers2 = [f"- {result.payload['text']}" for result in knowledge2]
+        show_knowledge = knowledge1 + knowledge2
+        show_answers=[f"({result.payload['tag']} {result.score})《{result.payload['file_name']}》:{result.payload['text']}"
+                    for result in show_knowledge]
+        #排序去重
+        count1,count2=0,0
+        while len(' '.join(answers1+answers2)) > 2000 and len(answers1+answers2) > 1:
+            if len(answers2) > 1 and len(answers1) -len(answers2) <2:
+                count2+=1
+                answers2 = answers2[:-1]
+            elif len(answers1) > 1:
+                count1+=1
+                answers1 = answers1[:-1]
+            else:
+                break
+        answers=answers1+answers2
+        if count1 or count2:
+            print(f">>> cut {count1} exact knowledge and {count2} corpus knowledge\n>>> remain {len(answers1)} + {len(answers2)} answers length:{len(' '.join(answers))}")
+        str_knowledge1= "\n".join(answers1[::-1])
+        str_knowledge2= "\n".join(answers2[::-1])
+        show_str_knowledges = "\n".join(["- " + i for i in show_answers])+"\n"
+        return str_knowledge1,str_knowledge2,show_str_knowledges
 
 
 class qdrant_client():
@@ -51,16 +84,59 @@ class qdrant_client():
                             payload=payload),
             ],
         )
-        
-    def combine_search(self, query_vector,keyword,member_lst,  top_k=[3,3]):
-        if member_lst:
+
+    def combine_search(self, query_vector,keywords,group_choose,match_text, top_k=[3,3]):
+        update=True
+        print(f">>>> (search mode) ingroup:{group_choose};match_text:{match_text}")
+        if group_choose and match_text:
             search_result1 = self.client.search(
                 collection_name=self.collection_name["exact"],
                 query_vector=query_vector,
                 limit=top_k[0],
                 # score_threshold = 0.9,
-                query_filter=Filter(must=[FieldCondition(key="tag",match=MatchAny(any=keyword),),
-                                     FieldCondition(key="text",match=MatchText(text=member_lst[0]),)])
+                query_filter=Filter(must=[FieldCondition(key="tag",match=MatchAny(any=group_choose),),],
+                                    should=[FieldCondition(key="text",match=MatchText(text=i),) for i in match_text])
+                # search_params={"exact": False, "hnsw_ef": 128}
+            )
+            search_result2 = self.client.search(
+                collection_name=self.collection_name["corpus"],
+                query_vector=query_vector,
+                limit=top_k[1],
+                query_filter=Filter(should=[FieldCondition(key="text",match=MatchText(text=i),) for i in match_text])
+                # search_params={"exact": False, "hnsw_ef": 128}
+            )
+        elif group_choose:
+
+            search_result1 = self.client.search(
+                collection_name=self.collection_name["exact"],
+                query_vector=query_vector,
+                limit=top_k[0],
+                # score_threshold = 0.9,
+                query_filter=Filter(must=[FieldCondition(key="tag",match=MatchAny(any=group_choose),),],
+                                    should=[FieldCondition(key="text",match=MatchText(text=i),) for i in keywords])
+                # search_params={"exact": False, "hnsw_ef": 128}
+            )
+            search_result2 = self.client.search(
+                collection_name=self.collection_name["corpus"],
+                query_vector=query_vector,
+                limit=top_k[1],
+                query_filter=Filter(should=[FieldCondition(key="text",match=MatchText(text=i),) for i in keywords])
+                # search_params={"exact": False, "hnsw_ef": 128}
+            )
+        elif match_text:
+            search_result1 = self.client.search(
+                collection_name=self.collection_name["exact"],
+                query_vector=query_vector,
+                limit=top_k[0],
+                query_filter=Filter(should=[FieldCondition(key="text",match=MatchText(text=i),) for i in match_text])
+                # score_threshold = 0.9,
+                # search_params={"exact": False, "hnsw_ef": 128}
+            )
+            search_result2 = self.client.search(
+                collection_name=self.collection_name["corpus"],
+                query_vector=query_vector,
+                limit=top_k[1],
+                query_filter=Filter(should=[FieldCondition(key="text",match=MatchText(text=i),) for i in match_text])
                 # search_params={"exact": False, "hnsw_ef": 128}
             )
         else:
@@ -68,19 +144,20 @@ class qdrant_client():
                 collection_name=self.collection_name["exact"],
                 query_vector=query_vector,
                 limit=top_k[0],
+                query_filter=Filter(should=[FieldCondition(key="text",match=MatchText(text=i),) for i in keywords])
                 # score_threshold = 0.9,
-                query_filter=Filter(must=[FieldCondition(key="tag",match=MatchAny(any=keyword),)]),
                 # search_params={"exact": False, "hnsw_ef": 128}
             )
-        search_result2 = self.client.search(
-            collection_name=self.collection_name["corpus"],
-            query_vector=query_vector,
-            limit=top_k[1],
-            # search_params={"exact": False, "hnsw_ef": 128}
-        )
-
-        knowledge = search_result1+search_result2
-        return knowledge
+            search_result2 = self.client.search(
+                collection_name=self.collection_name["corpus"],
+                query_vector=query_vector,
+                limit=top_k[1],
+                query_filter=Filter(should=[FieldCondition(key="text",match=MatchText(text=i),) for i in keywords])
+                # search_params={"exact": False, "hnsw_ef": 128}
+            )
+            update=False
+        str_knowledge1,str_knowledge2,show_str_knowledges = filter_knowledge(search_result1,search_result2)
+        return str_knowledge1,str_knowledge2,show_str_knowledges,update
 
     def search(self, collection,query_vector, top_k=3):
         search_result = self.client.search(
@@ -121,13 +198,13 @@ class qdrant_client():
     def info(self,collection):
         return self.client.get_collection(collection_name=self.collection_name[collection])
 
-
 def server_init(exact_keyword_path=""):
     if exact_keyword_path:
         jieba.set_dictionary(f'{exact_keyword_path}/keyword_dict.txt')
+        matchtext_set=load_matchtext_set(f'{exact_keyword_path}/keyword_dict.txt')
         exact_dict=load_exact_dict(exact_keyword_path)
         qd_client = qdrant_client()
-        return qd_client,exact_dict
+        return qd_client,exact_dict,matchtext_set
     else:
         qd_client = qdrant_client()
         return qd_client
