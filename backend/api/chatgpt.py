@@ -25,6 +25,7 @@ class ChatGPTManager:
         self.api_dict[conversation_id].load(config.get("azure_yaml"))
         self.load_record(conversation_id, conversation_history)
         self.api_dict[conversation_id].active_time = datetime.utcnow()
+        self.api_dict[conversation_id].knowledge1 = ""
         return conversation_id
 
     def clean_api(self):
@@ -88,13 +89,13 @@ class ChatGPTManager:
         conversation_history: str = "",
         timeout=360,
     ):
-        if conversation_id is None or self.api_dict.get(conversation_id, True):
+        if conversation_id is None or (not self.api_dict.get(conversation_id, False)):
             conversation_id = self.load_api(conversation_id, conversation_history)
         if use_paid or "BGI" in message or 'bgi' in message or "华大" in message:
             str_knowledge1, str_knowledge2, update = self.get_knowledege(message)
-            if update and not getattr(self, "knowledge1", ""):
-                self.knowledge1 = str_knowledge1
-            self.api_dict[conversation_id].conversation["default"][0]["content"] = f"{self.database_system_prompt}\n来源:{str_knowledge2}\n{self.knowledge1}"
+            if update or self.api_dict[conversation_id].knowledge1 == "":
+                self.api_dict[conversation_id].knowledge1 = str_knowledge1
+            self.api_dict[conversation_id].conversation["default"][0]["content"] = f"{self.database_system_prompt}\n来源:{str_knowledge2}\n{self.api_dict[conversation_id].knowledge1}"
             use_paid = True
         else:
             self.api_dict[conversation_id].conversation["default"][0]["content"] = f"{self.default_system_prompt}"
