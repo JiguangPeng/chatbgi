@@ -47,6 +47,9 @@ import router from '@/router';
 import { DropdownOption } from "naive-ui"
 import { ref, computed, h } from 'vue';
 import UserProfileCard from './UserProfileCard.vue';
+import { popupResetUserPasswordDialog } from '@/utils/renders';
+import { resetUserPasswordApi } from '@/api/user';
+
 
 
 const { t } = useI18n();
@@ -88,6 +91,21 @@ const languageOptions = [
 
 const options = ref<Array<DropdownOption>>([
   {
+    label: t("commons.resetPassword"),
+    key: 'resetPassword',
+    props: {
+      onClick: () => {
+            popupResetUserPasswordDialog(
+              async (password: string) => {
+                await resetUserPasswordApi(userStore.user.id, password);
+              },
+              () => { Message.info(t("tips.resetUserPasswordSuccess")) },
+              () => { Message.error(t("tips.resetUserPasswordFailed")) }
+            )
+      }
+    }
+  },
+  {
     label: t("commons.userProfile"),
     key: 'profile',
     props: {
@@ -126,5 +144,6 @@ if (userStore.user?.is_superuser) {
     }
   })
 }
+
 
 </script>
