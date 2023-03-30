@@ -12,10 +12,28 @@
           autoComplete: 'current-password'
         }" @keyup.enter="login" />
       </n-form-item>
-	  <font class="text-gray-500 inline-block" size=2>仅限华大内部使用</font><br>
-	  <font class="text-gray-500 inline-block" size=2>开通账号请联系彭继光(pengjiguang@bgi.com)</font>
+      <!-- <n-form-item label="仅限华大内部使用">
+        开通账号请联系彭继光(pengjiguang@bgi.com)
+      </n-form-item> -->
+      <font class="text-gray-500 inline-block" size=2>仅限华大内部使用<br />开通账号请联系彭继光(pengjiguang@bgi.com)</font>
       <n-form-item wrapper-col="{ span: 16, offset: 8 }">
-        <n-button type="primary" @click="login" :enabled="loading">{{ $t("commons.login") }}</n-button>
+        <n-row>
+          <n-col>
+            <div style="text-align: left;">
+              <n-button type="primary" @click="login" :enabled="loading">{{ $t("commons.login") }}</n-button>
+            </div>
+          </n-col>
+        </n-row>
+        <n-row><n-col></n-col></n-row>
+        <n-row><n-col></n-col></n-row>
+        <n-row><n-col></n-col></n-row>
+        <n-row>
+          <n-col>
+            <div>
+              <n-button type="primary" @click="register">{{ $t("commons.register") }}</n-button>
+            </div>
+          </n-col>
+        </n-row>
       </n-form-item>
     </n-form>
   </div>
@@ -65,6 +83,10 @@ const login = async () => {
       }
     }
   });
+}
+
+const register = () => {
+  router.push({name:'register'});
 }
 
 if (userStore.user) {

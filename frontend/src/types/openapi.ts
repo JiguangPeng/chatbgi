@@ -201,10 +201,13 @@ export interface components {
       email: string;
       /** Password */
       password: string;
+      
+      requestcode?: string;
       /**
        * Is Active 
        * @default true
        */
+      
       is_active?: boolean;
       /**
        * Is Superuser 

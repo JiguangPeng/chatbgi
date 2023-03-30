@@ -69,7 +69,11 @@
     "idlingChatStatus": "Idle",
     "userProfile": "User Profile",
     "status": "Status",
-    "copiedToClipboard": "Copied to clipboard"
+    "copiedToClipboard": "Copied to clipboard",
+	"register": "Register",
+	"passwordAgain" :"Password Again",
+	"requestCode":"Request Code",
+	"createUserSuccess": "Create User Success"
   },
   "errors": {
     "403": "403 error: access denied",
@@ -128,7 +132,12 @@
     "loginSuccess": "Logged in successfully",
     "jumpingPage": "Jumping...",
     "terminated": "Connection terminated by the server",
-    "loading": "Loading..."
+    "loading": "Loading...",
+	"enterPasswordAgain": "Enter Password Again",
+	"enterRequestCode": "Enter Request Code",
+	"wrongEmail": "Sad，only support BGI mail",
+	"passwordException": "Password Exception"
+
   },
   "labels": {
     "nickname": "Nickname",

@@ -69,7 +69,11 @@
     "queueingChatStatus": "排队中",
     "idlingChatStatus": "空闲",
     "userProfile": "用户信息",
-    "copiedToClipboard": "已复制到剪贴板"
+    "copiedToClipboard": "已复制到剪贴板",
+    "register": "注册",
+    "passwordAgain" :"再次输入密码",
+    "requestCode":"邀请码",
+    "createUserSuccess": "创建用户成功"
   },
   "errors": {
     "403": "403 错误：无访问权限",
@@ -128,7 +132,11 @@
     "loginSuccess": "登录成功",
     "jumpingPage": "正在跳转……",
     "terminated": "连接被服务端终止",
-    "loading": "正在加载..."
+    "loading": "正在加载...",
+    "enterPasswordAgain": "请再输入一遍密码",
+    "enterRequestCode": "请输入邀请码",
+    "wrongEmail": "很遗憾，暂时只支持BGI邮箱内部注册",
+    "passwordException": "两次密码输入不一致，请重新输入"
   },
   "labels": {
     "nickname": "昵称",
