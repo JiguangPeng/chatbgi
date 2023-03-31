@@ -2,6 +2,7 @@
   "commons": {
     "notLogin": "未登录",
     "siteTitle": "ChatBGI",
+    "siteTag": "华大专属ChatGPT",
     "confirm": "确定",
     "stayInCurrentPage": "留在此页",
     "username": "用户名",

@@ -2,6 +2,7 @@
   "commons": {
     "notLogin": "Not logged in",
     "siteTitle": "ChatBGI",
+    "siteTag": "BGI exclusive chatGPT",
     "confirm": "Confirm",
     "stayInCurrentPage": "Stay on this page",
     "username": "Username",

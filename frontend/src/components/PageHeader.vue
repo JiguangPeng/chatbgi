@@ -3,9 +3,10 @@
     <template #title>
       <n-space :align="'center'">
         <div>
-          <a href="#" style="text-decoration: none; color: inherit">{{ $t("commons.siteTitle") }}</a>
+          <a v-if="!userStore.user" href="/login" style="text-decoration: none; color: inherit">{{ $t("commons.siteTitle") }}</a>
+          <a v-if="userStore.user" href="/conversation" style="text-decoration: none; color: inherit">{{ $t("commons.siteTitle") }}</a>
         </div>
-		<font class="text-gray-500 inline-block" size="2">华大专属ChatGPT</font>
+        <div><font class="text-gray-500 inline-block" size="2">{{ $t("commons.siteTag") }}</font></div>
       </n-space>
     </template>
     <template #avatar>
